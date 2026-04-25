@@ -1,7 +1,3 @@
-這是一份為你的 **CiviGo** 專案量身打造的完整 `README.md` 檔案。它結合了你程式碼中的核心功能、創業構想（創新性、市場可行性、商業模式）以及技術架構，非常適合作為 GitHub 專案首頁或競賽提案的說明文件。
-
----
-
 # 🏛️ CiviGo — 每天走一點，文明前進一點
 
 [![Demo Status](https://img.shields.io/badge/Status-MVP%20Demo-gold)](https://zhe812.github.io/CiviGo/)
