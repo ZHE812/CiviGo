@@ -1,0 +1,1338 @@
+
+<!DOCTYPE html>
+<!--
+  CiviGo Advanced MVP Demo - Single HTML Prototype
+  功能包含：
+  - 步數模擬
+  - AI 飲食分析模擬
+  - 文明進化（史前→農業→青銅→工業）
+  - 建築解鎖（含視覺回饋）
+  - 吉祥物提醒系統
+  - 週聯賽與全球排行榜
+  - 商業模式展示
+  - Demo 展示模式（自動流程演示）
+-->
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CiviGo — 每天走一點，文明前進一點</title>
+<style>
+  /* ===== CSS VARIABLES ===== */
+  :root {
+    --bg: #0d1117;
+    --bg2: #161b22;
+    --bg3: #1c2333;
+    --card: rgba(22,27,34,0.92);
+    --card2: rgba(28,35,51,0.85);
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.15);
+    --gold: #f5c542;
+    --gold2: #e6a817;
+    --bronze: #cd7f32;
+    --green: #3fb950;
+    --green2: #2ea043;
+    --blue: #58a6ff;
+    --blue2: #1f6feb;
+    --red: #f85149;
+    --purple: #bc8cff;
+    --orange: #f0883e;
+    --text: #e6edf3;
+    --text2: #8b949e;
+    --text3: #6e7681;
+    --glow-gold: 0 0 20px rgba(245,197,66,0.35);
+    --glow-blue: 0 0 20px rgba(88,166,255,0.3);
+    --glow-green: 0 0 20px rgba(63,185,80,0.3);
+    --radius: 14px;
+    --radius-sm: 8px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ===== STARFIELD BG ===== */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 80% 50% at 20% 10%, rgba(31,111,235,0.12) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 40% at 80% 80%, rgba(188,140,255,0.08) 0%, transparent 55%),
+      radial-gradient(ellipse 40% 60% at 50% 50%, rgba(245,197,66,0.04) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .app-wrap { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 0 16px 60px; }
+
+  /* ===== TOAST ===== */
+  #toast {
+    position: fixed; top: 24px; left: 50%; transform: translateX(-50%) translateY(-80px);
+    background: linear-gradient(135deg, #f5c542, #e6a817);
+    color: #0d1117; font-weight: 700; font-size: 15px;
+    padding: 14px 28px; border-radius: 40px;
+    box-shadow: 0 4px 30px rgba(245,197,66,0.5);
+    z-index: 9999; transition: transform 0.4s cubic-bezier(0.34,1.56,0.64,1);
+    text-align: center; max-width: 90vw;
+  }
+  #toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* ===== DEMO MODE OVERLAY ===== */
+  #demo-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+    z-index: 8000; display: none; align-items: flex-end; justify-content: center;
+    padding-bottom: 40px;
+  }
+  #demo-overlay.active { display: flex; }
+  #demo-panel {
+    background: var(--bg2); border: 1px solid var(--gold);
+    border-radius: var(--radius); padding: 24px 32px; width: min(500px, 92vw);
+    box-shadow: var(--glow-gold);
+  }
+  #demo-panel h3 { color: var(--gold); font-size: 18px; margin-bottom: 8px; }
+  #demo-step-text { color: var(--text); font-size: 14px; line-height: 1.6; min-height: 48px; }
+  #demo-progress-bar-wrap { background: var(--bg3); border-radius: 20px; height: 6px; margin: 14px 0; }
+  #demo-progress-bar { height: 6px; border-radius: 20px; background: linear-gradient(90deg, var(--gold), var(--orange)); width: 0%; transition: width 0.6s ease; }
+  #demo-step-counter { color: var(--text2); font-size: 12px; margin-bottom: 14px; }
+  .demo-btn-row { display: flex; gap: 10px; }
+  .demo-btn { flex: 1; padding: 10px; border-radius: var(--radius-sm); border: none; cursor: pointer; font-size: 14px; font-weight: 600; }
+  #demo-next-btn { background: var(--gold); color: #0d1117; }
+  #demo-skip-btn { background: transparent; color: var(--text2); border: 1px solid var(--border2); }
+
+  /* ===== TOPBAR ===== */
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 0 16px; flex-wrap: wrap; gap: 12px;
+  }
+  .logo { display: flex; align-items: center; gap: 10px; }
+  .logo-icon {
+    width: 42px; height: 42px; border-radius: 12px;
+    background: linear-gradient(135deg, #f5c542, #cd7f32);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; box-shadow: var(--glow-gold);
+  }
+  .logo-text { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
+  .logo-sub { font-size: 11px; color: var(--text2); letter-spacing: 0.5px; }
+  .topbar-right { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .era-badge {
+    background: linear-gradient(135deg, var(--bg3), var(--bg2));
+    border: 1px solid var(--gold); color: var(--gold);
+    padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600;
+    box-shadow: var(--glow-gold);
+  }
+  .streak-badge {
+    background: linear-gradient(135deg, #f0883e, #e6a817);
+    color: #0d1117; padding: 6px 12px; border-radius: 20px;
+    font-size: 13px; font-weight: 700;
+  }
+  .user-chip {
+    background: var(--bg3); border: 1px solid var(--border2);
+    padding: 6px 14px; border-radius: 20px; font-size: 13px; color: var(--text2);
+  }
+
+  /* ===== DEMO BUTTON ===== */
+  #demo-launch-btn {
+    background: linear-gradient(135deg, #bc8cff, #58a6ff);
+    color: white; border: none; padding: 10px 20px; border-radius: 20px;
+    font-size: 13px; font-weight: 700; cursor: pointer;
+    box-shadow: 0 0 16px rgba(188,140,255,0.4);
+    transition: transform 0.2s, box-shadow 0.2s;
+    white-space: nowrap;
+  }
+  #demo-launch-btn:hover { transform: scale(1.04); box-shadow: 0 0 24px rgba(188,140,255,0.6); }
+  #demo-launch-btn.running { animation: pulse-purple 1.2s infinite; }
+  @keyframes pulse-purple {
+    0%,100% { box-shadow: 0 0 16px rgba(188,140,255,0.4); }
+    50% { box-shadow: 0 0 30px rgba(188,140,255,0.8); }
+  }
+
+  /* ===== SECTION TITLES ===== */
+  .section-title {
+    font-size: 13px; font-weight: 700; letter-spacing: 1.5px;
+    color: var(--text2); text-transform: uppercase; margin-bottom: 14px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  /* ===== CARDS ===== */
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px;
+    backdrop-filter: blur(12px); transition: border-color 0.3s;
+  }
+  .card:hover { border-color: var(--border2); }
+  .card.glow-gold { border-color: rgba(245,197,66,0.4); box-shadow: var(--glow-gold); }
+  .card.glow-green { border-color: rgba(63,185,80,0.4); box-shadow: var(--glow-green); }
+  .card.glow-burst {
+    border-color: var(--gold) !important;
+    box-shadow: 0 0 40px rgba(245,197,66,0.5), 0 0 80px rgba(245,197,66,0.2) !important;
+    animation: burst-pulse 1s ease-in-out 3;
+  }
+  @keyframes burst-pulse {
+    0%,100% { box-shadow: 0 0 30px rgba(245,197,66,0.4); }
+    50% { box-shadow: 0 0 60px rgba(245,197,66,0.8); }
+  }
+
+  /* ===== DASHBOARD GRID ===== */
+  .dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+  @media(max-width:640px) { .dashboard-grid { grid-template-columns: 1fr; } }
+
+  .stat-label { font-size: 12px; color: var(--text2); letter-spacing: 0.5px; margin-bottom: 4px; }
+  .stat-value { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; }
+  .stat-unit { font-size: 13px; color: var(--text2); font-weight: 400; }
+
+  /* PROGRESS BAR */
+  .progress-wrap { background: var(--bg3); border-radius: 20px; height: 10px; margin: 12px 0; overflow: hidden; }
+  .progress-fill {
+    height: 10px; border-radius: 20px;
+    background: linear-gradient(90deg, #3fb950, #58a6ff);
+    transition: width 0.8s cubic-bezier(0.34,1.2,0.64,1);
+    position: relative;
+  }
+  .progress-fill::after {
+    content: ''; position: absolute; right: 0; top: 0; bottom: 0; width: 6px;
+    background: white; border-radius: 20px; opacity: 0.6;
+    animation: shimmer 1.5s infinite;
+  }
+  @keyframes shimmer { 0%,100%{opacity:0.4} 50%{opacity:0.9} }
+  .progress-fill.gold { background: linear-gradient(90deg, var(--gold2), var(--gold)); }
+  .progress-fill.civ { background: linear-gradient(90deg, #cd7f32, #f5c542, #58a6ff); }
+
+  /* STATUS BADGE */
+  .status-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;
+  }
+  .status-low { background: rgba(248,81,73,0.15); color: var(--red); border: 1px solid rgba(248,81,73,0.3); }
+  .status-mid { background: rgba(240,136,62,0.15); color: var(--orange); border: 1px solid rgba(240,136,62,0.3); }
+  .status-done { background: rgba(63,185,80,0.15); color: var(--green); border: 1px solid rgba(63,185,80,0.3); }
+  .status-burst { background: rgba(245,197,66,0.2); color: var(--gold); border: 1px solid rgba(245,197,66,0.5); animation: gold-pulse 1s infinite; }
+  @keyframes gold-pulse { 0%,100%{opacity:1} 50%{opacity:0.7} }
+
+  /* RESOURCES */
+  .resources-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-top: 16px; }
+  .res-card {
+    background: var(--bg3); border-radius: var(--radius-sm);
+    padding: 12px; text-align: center; border: 1px solid var(--border);
+    transition: all 0.3s;
+  }
+  .res-card:hover { border-color: var(--border2); transform: translateY(-2px); }
+  .res-icon { font-size: 22px; margin-bottom: 4px; }
+  .res-name { font-size: 10px; color: var(--text2); letter-spacing: 0.5px; margin-bottom: 4px; }
+  .res-val { font-size: 18px; font-weight: 700; color: var(--gold); }
+  .res-change { font-size: 10px; color: var(--green); margin-top: 2px; opacity: 0; transition: opacity 0.3s; }
+  .res-change.show { opacity: 1; }
+
+  /* ===== ACTION BUTTONS ===== */
+  .action-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 10px; margin-bottom: 20px; }
+  @media(max-width:480px) { .action-grid { grid-template-columns: 1fr; } }
+  .action-btn {
+    padding: 14px 10px; border: none; border-radius: var(--radius-sm);
+    font-size: 14px; font-weight: 700; cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s; position: relative; overflow: hidden;
+  }
+  .action-btn:active { transform: scale(0.96); }
+  .action-btn::before {
+    content: ''; position: absolute; inset: 0;
+    background: white; opacity: 0; transition: opacity 0.15s;
+  }
+  .action-btn:active::before { opacity: 0.1; }
+  .btn-step1 { background: linear-gradient(135deg, #1f6feb, #58a6ff); color: white; }
+  .btn-step2 { background: linear-gradient(135deg, #2ea043, #3fb950); color: white; }
+  .btn-goal { background: linear-gradient(135deg, #f5c542, #cd7f32); color: #0d1117; }
+  .btn-reset { background: var(--bg3); color: var(--text2); border: 1px solid var(--border2); }
+
+  /* ===== CIVILIZATION MAP ===== */
+  .eras-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 14px; }
+  @media(max-width:600px) { .eras-grid { grid-template-columns: 1fr; } }
+
+  .era-card {
+    background: var(--bg3); border-radius: var(--radius);
+    border: 1px solid var(--border); padding: 16px; transition: all 0.4s;
+  }
+  .era-card.active { border-color: rgba(245,197,66,0.5); box-shadow: var(--glow-gold); }
+  .era-card.completed { border-color: rgba(63,185,80,0.4); }
+  .era-card.locked { opacity: 0.5; }
+
+  .era-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .era-emoji { font-size: 24px; }
+  .era-name { font-size: 15px; font-weight: 700; }
+  .era-range { font-size: 11px; color: var(--text2); }
+  .era-status-tag {
+    margin-left: auto; font-size: 11px; font-weight: 700; padding: 3px 10px;
+    border-radius: 20px;
+  }
+  .tag-active { background: rgba(245,197,66,0.2); color: var(--gold); border: 1px solid rgba(245,197,66,0.4); }
+  .tag-done { background: rgba(63,185,80,0.2); color: var(--green); border: 1px solid rgba(63,185,80,0.4); }
+  .tag-locked { background: var(--bg); color: var(--text3); border: 1px solid var(--border); }
+
+  .buildings-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }
+  .building-slot {
+    background: var(--bg); border-radius: 10px; padding: 12px 6px;
+    text-align: center; border: 1px solid var(--border);
+    transition: all 0.4s; position: relative;
+  }
+  .building-slot.unlocked {
+    background: linear-gradient(135deg, rgba(63,185,80,0.12), rgba(88,166,255,0.08));
+    border-color: rgba(63,185,80,0.4);
+  }
+  .building-slot.building {
+    background: linear-gradient(135deg, rgba(245,197,66,0.1), rgba(240,136,62,0.08));
+    border-color: rgba(245,197,66,0.3);
+  }
+  .building-slot.locked-slot { filter: grayscale(1); opacity: 0.4; }
+  .building-slot.just-unlocked {
+    animation: unlock-pop 0.6s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  @keyframes unlock-pop {
+    0% { transform: scale(0.8); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  .building-emoji { font-size: 20px; }
+  .building-name { font-size: 10px; color: var(--text2); margin-top: 4px; line-height: 1.2; }
+  .building-badge {
+    position: absolute; top: -5px; right: -5px;
+    background: var(--green); color: white; font-size: 9px;
+    border-radius: 20px; padding: 2px 5px; font-weight: 700;
+  }
+  .building-lock-icon { font-size: 14px; color: var(--text3); margin-top: 2px; }
+  .building-mini-prog { background: rgba(255,255,255,0.1); height: 3px; border-radius: 20px; margin-top: 6px; }
+  .building-mini-fill { height: 3px; border-radius: 20px; background: var(--gold); }
+
+  /* ===== DIET SECTION ===== */
+  .diet-input-area {
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 14px; margin-bottom: 14px;
+    display: flex; gap: 10px; flex-wrap: wrap;
+  }
+  .diet-input-area input[type=text] {
+    flex: 1; min-width: 160px; background: var(--bg);
+    border: 1px solid var(--border2); border-radius: var(--radius-sm);
+    color: var(--text); padding: 10px 14px; font-size: 14px;
+    outline: none; transition: border-color 0.2s;
+  }
+  .diet-input-area input[type=text]:focus { border-color: var(--blue); }
+  .diet-input-area input[type=file] { display: none; }
+  .file-label {
+    padding: 10px 14px; background: var(--bg); border: 1px dashed var(--border2);
+    border-radius: var(--radius-sm); cursor: pointer; font-size: 13px;
+    color: var(--text2); white-space: nowrap;
+  }
+  .analyze-btn {
+    background: linear-gradient(135deg, var(--blue2), var(--blue));
+    color: white; border: none; padding: 10px 20px;
+    border-radius: var(--radius-sm); font-size: 14px; font-weight: 700;
+    cursor: pointer; white-space: nowrap; transition: opacity 0.2s;
+  }
+  .analyze-btn:hover { opacity: 0.88; }
+
+  #diet-result {
+    display: none; background: var(--bg3); border: 1px solid rgba(88,166,255,0.3);
+    border-radius: var(--radius); padding: 18px;
+    box-shadow: var(--glow-blue);
+  }
+  .diet-result-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 10px; margin: 14px 0; }
+  @media(max-width:480px) { .diet-result-grid { grid-template-columns: 1fr 1fr; } }
+  .diet-stat { background: var(--bg); border-radius: var(--radius-sm); padding: 10px; text-align: center; }
+  .diet-stat-label { font-size: 10px; color: var(--text2); }
+  .diet-stat-value { font-size: 18px; font-weight: 700; color: var(--blue); }
+  .diet-stat-unit { font-size: 10px; color: var(--text3); }
+  .confidence-bar { background: var(--bg); border-radius: 20px; height: 8px; margin: 8px 0; }
+  .confidence-fill { height: 8px; border-radius: 20px; background: linear-gradient(90deg, var(--blue2), var(--blue)); transition: width 0.8s ease; }
+  .civ-effect-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .civ-effect-chip {
+    padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;
+    background: rgba(63,185,80,0.15); color: var(--green);
+    border: 1px solid rgba(63,185,80,0.3);
+  }
+  .civ-effect-chip.tech { background: rgba(188,140,255,0.15); color: var(--purple); border-color: rgba(188,140,255,0.3); }
+  .preview-img { max-width: 80px; max-height: 60px; border-radius: var(--radius-sm); object-fit: cover; }
+
+  /* ===== MASCOT ===== */
+  .mascot-section {
+    display: flex; gap: 16px; align-items: flex-start;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px;
+  }
+  .mascot-char {
+    flex-shrink: 0; width: 72px; height: 72px; border-radius: 50%;
+    background: linear-gradient(135deg, #f5c542, #cd7f32);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 32px; box-shadow: var(--glow-gold);
+    animation: mascot-bob 2.5s ease-in-out infinite;
+  }
+  @keyframes mascot-bob {
+    0%,100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+  }
+  .mascot-name { font-size: 12px; color: var(--gold); font-weight: 700; text-align: center; margin-top: 6px; }
+  .mascot-bubble {
+    background: var(--bg3); border: 1px solid var(--border2);
+    border-radius: 12px 12px 12px 0; padding: 14px 16px;
+    font-size: 14px; line-height: 1.6; flex: 1;
+    position: relative;
+  }
+  .mascot-bubble::before {
+    content: ''; position: absolute; left: -8px; top: 16px;
+    border: 8px solid transparent;
+    border-right-color: var(--border2);
+  }
+  .mascot-mood { font-size: 11px; color: var(--text2); margin-top: 8px; }
+
+  /* ===== LEADERBOARD ===== */
+  .lb-table { width: 100%; border-collapse: separate; border-spacing: 0 6px; }
+  .lb-table th { font-size: 11px; color: var(--text3); font-weight: 600; text-align: left; padding: 6px 12px; }
+  .lb-table td { padding: 12px; background: var(--bg3); font-size: 13px; }
+  .lb-table td:first-child { border-radius: var(--radius-sm) 0 0 var(--radius-sm); }
+  .lb-table td:last-child { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+  .lb-rank { font-weight: 800; font-size: 15px; width: 36px; }
+  .rank-1 { color: var(--gold); }
+  .rank-2 { color: #c0c0c0; }
+  .rank-3 { color: var(--bronze); }
+  .lb-player { font-weight: 600; }
+  .lb-player.is-me { color: var(--blue); }
+  .lb-me-row td { background: rgba(88,166,255,0.08); border: 1px solid rgba(88,166,255,0.2); }
+  .lb-me-row td:first-child { border-radius: var(--radius-sm) 0 0 var(--radius-sm); }
+  .lb-me-row td:last-child { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; border-right: 1px solid rgba(88,166,255,0.2); }
+  .lb-league-tag { font-size: 10px; padding: 2px 8px; border-radius: 20px; font-weight: 600; }
+  .tag-promo { background: rgba(63,185,80,0.2); color: var(--green); }
+  .tag-stable { background: rgba(88,166,255,0.2); color: var(--blue); }
+  .tag-drop { background: rgba(248,81,73,0.2); color: var(--red); }
+  .rank-change { font-size: 11px; margin-left: 6px; }
+  .rank-up { color: var(--green); }
+  .rank-down { color: var(--red); }
+
+  /* ===== BUSINESS CARDS ===== */
+  .biz-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; }
+  @media(max-width:640px) { .biz-grid { grid-template-columns: 1fr; } }
+  .biz-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .biz-card:hover { transform: translateY(-4px); box-shadow: 0 8px 30px rgba(0,0,0,0.3); }
+  .biz-icon { font-size: 28px; margin-bottom: 10px; }
+  .biz-title { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
+  .biz-desc { font-size: 12px; color: var(--text2); line-height: 1.6; }
+  .biz-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+  .biz-tag { font-size: 10px; padding: 3px 8px; border-radius: 20px; background: var(--bg3); color: var(--text2); border: 1px solid var(--border); }
+
+  /* ===== MISC UTILS ===== */
+  .mt8 { margin-top: 8px; }
+  .mt16 { margin-top: 16px; }
+  .mt20 { margin-top: 20px; }
+  .mt28 { margin-top: 28px; }
+  .flex-between { display: flex; align-items: center; justify-content: space-between; }
+  .text-gold { color: var(--gold); }
+  .text-green { color: var(--green); }
+  .text-blue { color: var(--blue); }
+  .text-purple { color: var(--purple); }
+  .text-sm { font-size: 13px; color: var(--text2); }
+  .divider { height: 1px; background: var(--border); margin: 20px 0; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--bg3); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- TOAST -->
+<div id="toast">🌟 文明爆發！飲食與步行雙達標，科技值加成！</div>
+
+<!-- DEMO OVERLAY -->
+<div id="demo-overlay">
+  <div id="demo-panel">
+    <h3>🎬 Demo 展示模式</h3>
+    <p id="demo-step-text">準備開始演示…</p>
+    <div id="demo-progress-bar-wrap"><div id="demo-progress-bar"></div></div>
+    <p id="demo-step-counter">步驟 0 / 6</p>
+    <div class="demo-btn-row">
+      <button class="demo-btn" id="demo-next-btn" onclick="demoNext()">▶ 下一步</button>
+      <button class="demo-btn" id="demo-skip-btn" onclick="demoEnd()">✕ 結束演示</button>
+    </div>
+  </div>
+</div>
+
+<div class="app-wrap">
+
+  <!-- ===== A. TOP BAR ===== -->
+  <div class="topbar">
+    <div class="logo">
+      <div class="logo-icon">🏛️</div>
+      <div>
+        <div class="logo-text">CiviGo</div>
+        <div class="logo-sub">每天走一點，文明前進一點</div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="era-badge" id="era-badge-top">🪨 史前時代</div>
+      <div class="streak-badge" id="streak-badge">🔥 連續 3 天</div>
+      <div class="user-chip">👤 Demo Player</div>
+      <button id="demo-launch-btn" onclick="demoLaunch()">🎬 Demo 展示模式</button>
+    </div>
+  </div>
+
+  <!-- ===== B. DASHBOARD ===== -->
+  <div class="section-title">📊 今日儀表板 — Dashboard</div>
+  <div class="dashboard-grid">
+
+    <!-- Steps card -->
+    <div class="card" id="steps-card">
+      <div class="stat-label">今日步數</div>
+      <div class="flex-between" style="align-items:flex-end">
+        <div>
+          <span class="stat-value text-green" id="steps-display">1,200</span>
+          <span class="stat-unit"> 步</span>
+        </div>
+        <div id="today-status" class="status-badge status-low">⚠ 尚未達標</div>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-fill" id="steps-bar" style="width:14%"></div>
+      </div>
+      <div class="flex-between text-sm mt8">
+        <span>目標：<span id="goal-display">8,500</span> 步</span>
+        <span id="steps-pct">14%</span>
+      </div>
+    </div>
+
+    <!-- Civ card -->
+    <div class="card" id="civ-card">
+      <div class="stat-label">文明等級 — Civilization Score</div>
+      <div class="flex-between" style="align-items:flex-end">
+        <div>
+          <span class="stat-value text-gold" id="civ-score-display">45</span>
+          <span class="stat-unit"> 文明值</span>
+        </div>
+        <div class="era-badge" id="era-badge-civ" style="font-size:11px">🪨 史前時代</div>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-fill civ" id="civ-bar" style="width:22%"></div>
+      </div>
+      <div class="flex-between text-sm mt8">
+        <span>下一時代門檻：200</span>
+        <span id="civ-pct">22%</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Resources -->
+  <div class="card mt8" id="resources-card">
+    <div class="text-sm" style="margin-bottom:10px">🌐 文明資源</div>
+    <div class="resources-row">
+      <div class="res-card">
+        <div class="res-icon">⛏️</div>
+        <div class="res-name">勞動力 / 探索值</div>
+        <div class="res-val" id="labor-display">24</div>
+        <div class="res-change" id="labor-change">+12 ↑</div>
+      </div>
+      <div class="res-card">
+        <div class="res-icon">🌾</div>
+        <div class="res-name">糧食 / 穩定度</div>
+        <div class="res-val" id="food-display">10</div>
+        <div class="res-change" id="food-change">+8 ↑</div>
+      </div>
+      <div class="res-card">
+        <div class="res-icon">⚡</div>
+        <div class="res-name">科技值 / 文明加速</div>
+        <div class="res-val" id="tech-display">5</div>
+        <div class="res-change" id="tech-change">+5 ↑</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== C. ACTION BUTTONS ===== -->
+  <div class="mt20">
+    <div class="section-title">🕹️ 互動操作</div>
+    <div class="action-grid">
+      <button class="action-btn btn-step1" onclick="addSteps(1000)">🚶 +1,000 步</button>
+      <button class="action-btn btn-step2" onclick="addSteps(3000)">🏃 +3,000 步</button>
+      <button class="action-btn btn-goal" onclick="completeGoal()">🎯 完成今日目標</button>
+      <button class="action-btn btn-reset" onclick="resetDemo()">🔄 重置 Demo</button>
+    </div>
+  </div>
+
+  <!-- ===== G. MASCOT ===== -->
+  <div class="mt20">
+    <div class="section-title">🦊 文明守護者 — CiviBot</div>
+    <div class="mascot-section">
+      <div>
+        <div class="mascot-char" id="mascot-char">🧙</div>
+        <div class="mascot-name">史官 · 奇比</div>
+      </div>
+      <div class="mascot-bubble">
+        <div id="mascot-text">今天還沒走幾步…聚落的人正在等待資源補給，文明可能要停滯了。快動起來吧！🪨</div>
+        <div class="mascot-mood" id="mascot-mood">😟 擔心中</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== D. CIVILIZATION MAP ===== -->
+  <div class="mt28">
+    <div class="section-title">🏛️ 文明時代與建築解鎖</div>
+    <div class="eras-grid" id="eras-grid">
+      <!-- Rendered by JS -->
+    </div>
+  </div>
+
+  <!-- ===== E. AI DIET SECTION ===== -->
+  <div class="mt28">
+    <div class="section-title">🤖 AI 飲食分析</div>
+    <div class="card">
+      <div class="flex-between" style="flex-wrap:wrap; gap:8px; margin-bottom:12px">
+        <div>
+          <div style="font-weight:700; font-size:15px">記錄今日飲食</div>
+          <div class="text-sm">輸入食物內容，AI 即時分析文明影響</div>
+        </div>
+        <div id="diet-done-badge" style="display:none" class="status-badge status-done">✓ 分析完成</div>
+      </div>
+      <div class="diet-input-area">
+        <input type="text" id="diet-input" placeholder="例：雞腿便當、無糖豆漿、香蕉" />
+        <label class="file-label" for="diet-img">📷 上傳圖片</label>
+        <input type="file" id="diet-img" accept="image/*" onchange="dietImgPreview(event)">
+        <button class="analyze-btn" onclick="analyzeDiet()">🔍 AI 分析飲食</button>
+      </div>
+      <div id="diet-img-preview" style="margin-bottom:10px"></div>
+      <div id="diet-result">
+        <div style="font-size:13px; color:var(--text2); margin-bottom:8px">
+          📋 分析結果 — <span id="diet-summary-text"></span>
+        </div>
+        <div class="diet-result-grid">
+          <div class="diet-stat">
+            <div class="diet-stat-label">估計熱量</div>
+            <div class="diet-stat-value" id="d-kcal">—</div>
+            <div class="diet-stat-unit">kcal</div>
+          </div>
+          <div class="diet-stat">
+            <div class="diet-stat-label">蛋白質</div>
+            <div class="diet-stat-value" id="d-protein">—</div>
+            <div class="diet-stat-unit">g</div>
+          </div>
+          <div class="diet-stat">
+            <div class="diet-stat-label">碳水化合物</div>
+            <div class="diet-stat-value" id="d-carb">—</div>
+            <div class="diet-stat-unit">g</div>
+          </div>
+          <div class="diet-stat">
+            <div class="diet-stat-label">脂肪</div>
+            <div class="diet-stat-value" id="d-fat">—</div>
+            <div class="diet-stat-unit">g</div>
+          </div>
+        </div>
+        <div class="flex-between text-sm" style="margin-top:8px">
+          <span>營養平衡度：<span id="d-balance" style="font-weight:700"></span></span>
+          <span>AI 信心：<span id="d-confidence" style="font-weight:700;color:var(--blue)"></span></span>
+        </div>
+        <div class="confidence-bar"><div class="confidence-fill" id="d-conf-bar" style="width:0%"></div></div>
+        <div class="text-sm mt8">📍 建議今日步數：<span id="d-suggested" style="font-weight:700; color:var(--gold)">—</span></div>
+        <div class="civ-effect-row" id="d-civ-effects"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== H. WEEKLY LEAGUE ===== -->
+  <div class="mt28">
+    <div class="section-title">🏆 本週聯賽排行榜</div>
+    <div class="card">
+      <div class="flex-between" style="margin-bottom:14px">
+        <div>
+          <span style="font-weight:700">青銅文明聯賽</span>
+          <span class="text-sm" style="margin-left:8px">第 17 週</span>
+        </div>
+        <div class="status-badge status-mid" style="font-size:11px">4天後結算</div>
+      </div>
+      <table class="lb-table" id="league-table">
+        <thead>
+          <tr>
+            <th>名次</th><th>玩家</th><th>本週步數</th><th>文明分數</th><th>狀態</th>
+          </tr>
+        </thead>
+        <tbody id="league-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ===== I. GLOBAL RANKING ===== -->
+  <div class="mt28">
+    <div class="section-title">🌍 全球文明排行榜 Top 10</div>
+    <div class="card">
+      <table class="lb-table">
+        <thead>
+          <tr>
+            <th>名次</th><th>玩家</th><th>文明時代</th><th>文明等級</th><th>總分</th>
+          </tr>
+        </thead>
+        <tbody id="global-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ===== J. BUSINESS MODEL ===== -->
+  <div class="mt28">
+    <div class="section-title">💡 Why CiviGo — 創業構想</div>
+    <div class="biz-grid">
+      <div class="biz-card">
+        <div class="biz-icon">🧬</div>
+        <div class="biz-title">創新性</div>
+        <div class="biz-desc">全球首款以「文明進化」為核心留存機制的健康習慣平台。健康行為 × 文明建設 × AI 飲食分析 × 遊戲化排行，突破傳統健走 App 的功能邊界。</div>
+        <div class="biz-tags">
+          <span class="biz-tag">遊戲化</span>
+          <span class="biz-tag">AI 分析</span>
+          <span class="biz-tag">文明機制</span>
+          <span class="biz-tag">行為科學</span>
+        </div>
+      </div>
+      <div class="biz-card">
+        <div class="biz-icon">🎯</div>
+        <div class="biz-title">市場可行性</div>
+        <div class="biz-desc">鎖定大學生與 25–35 歲年輕上班族，從校園健康挑戰與社群分享切入，搭配聯賽機制增強黏著度與口碑擴散效應。</div>
+        <div class="biz-tags">
+          <span class="biz-tag">大學校園</span>
+          <span class="biz-tag">企業健康</span>
+          <span class="biz-tag">社群分享</span>
+          <span class="biz-tag">留存驅動</span>
+        </div>
+      </div>
+      <div class="biz-card">
+        <div class="biz-icon">💰</div>
+        <div class="biz-title">商業模式</div>
+        <div class="biz-desc">Freemium 基礎 + AI 飲食分析訂閱制，並拓展校園 / 企業健康挑戰方案授權、品牌聯名限定文明建築，多元收入來源可擴展。</div>
+        <div class="biz-tags">
+          <span class="biz-tag">Freemium</span>
+          <span class="biz-tag">訂閱制</span>
+          <span class="biz-tag">B2B 授權</span>
+          <span class="biz-tag">品牌聯名</span>
+        </div>
+      </div>
+    </div>
+    <div style="text-align:center; margin-top:28px; color:var(--text3); font-size:12px; letter-spacing:1px">
+      CiviGo — Walk to build your civilization. · MVP Demo v1.0 · 2026 桃園青創力競賽
+    </div>
+  </div>
+
+</div><!-- /app-wrap -->
+
+<script>
+/* ============================================================
+   CIVIGO STATE MANAGEMENT
+   ============================================================ */
+const INITIAL_STATE = {
+  steps: 1200,
+  suggestedSteps: 8500,
+  hasDietAnalysis: false,
+  streak: 3,
+  labor: 24,
+  food: 10,
+  tech: 5,
+  civScore: 45,
+  currentEra: 0,
+  unlockedBuildings: new Set(['b0-0']),
+  civilizationBurstActive: false,
+  leagueRank: 6,
+};
+
+let state = deepClone(INITIAL_STATE);
+
+function deepClone(s) {
+  return {
+    ...s,
+    unlockedBuildings: new Set(s.unlockedBuildings),
+  };
+}
+
+/* ============================================================
+   ERAS & BUILDINGS DATA
+   ============================================================ */
+const ERAS = [
+  {
+    id: 0, name: '史前時代', emoji: '🪨', range: '0–199',
+    buildings: [
+      { id: 'b0-0', name: '火堆', emoji: '🔥', threshold: 0 },
+      { id: 'b0-1', name: '採集地', emoji: '🌿', threshold: 30 },
+      { id: 'b0-2', name: '洞穴聚落', emoji: '🏔️', threshold: 80 },
+    ]
+  },
+  {
+    id: 1, name: '農業文明', emoji: '🌾', range: '200–499',
+    buildings: [
+      { id: 'b1-0', name: '農田', emoji: '🌱', threshold: 200 },
+      { id: 'b1-1', name: '糧倉', emoji: '🏚️', threshold: 280 },
+      { id: 'b1-2', name: '村莊', emoji: '🏘️', threshold: 380 },
+    ]
+  },
+  {
+    id: 2, name: '青銅城邦', emoji: '⚔️', range: '500–899',
+    buildings: [
+      { id: 'b2-0', name: '冶煉坊', emoji: '⚒️', threshold: 500 },
+      { id: 'b2-1', name: '神殿', emoji: '🛕', threshold: 620 },
+      { id: 'b2-2', name: '城牆', emoji: '🧱', threshold: 760 },
+    ]
+  },
+  {
+    id: 3, name: '工業時代', emoji: '⚙️', range: '900+',
+    buildings: [
+      { id: 'b3-0', name: '工廠', emoji: '🏭', threshold: 900 },
+      { id: 'b3-1', name: '鐵道', emoji: '🚂', threshold: 980 },
+      { id: 'b3-2', name: '發電站', emoji: '⚡', threshold: 1080 },
+    ]
+  },
+];
+
+/* ============================================================
+   LEADERBOARD DATA
+   ============================================================ */
+const LEAGUE_PLAYERS = [
+  { name: 'Alex Chen', steps: 68400, civScore: 412, status: 'promo' },
+  { name: 'Mia Wu', steps: 61200, civScore: 389, status: 'promo' },
+  { name: '文明行者', steps: 54800, civScore: 341, status: 'promo' },
+  { name: 'Kevin Lo', steps: 48200, civScore: 298, status: 'stable' },
+  { name: 'Sarah Huang', steps: 42000, civScore: 271, status: 'stable' },
+  { name: 'Demo Player', steps: 1200, civScore: 45, status: 'drop', isMe: true },
+  { name: '步行者甲', steps: 19800, civScore: 138, status: 'drop' },
+  { name: '阿哲', steps: 15400, civScore: 102, status: 'drop' },
+];
+
+const GLOBAL_PLAYERS = [
+  { name: 'CivMaster_JP', era: '工業時代 ⚙️', level: 47, score: 2840 },
+  { name: 'WalkKing_KR', era: '工業時代 ⚙️', level: 44, score: 2612 },
+  { name: 'StepGod_US', era: '工業時代 ⚙️', level: 41, score: 2488 },
+  { name: '文明帝 · 台北', era: '工業時代 ⚙️', level: 38, score: 2301 },
+  { name: 'MarathonBoy', era: '青銅城邦 ⚔️', level: 32, score: 1970 },
+  { name: 'AncientRunner', era: '青銅城邦 ⚔️', level: 28, score: 1754 },
+  { name: 'HealthHero_SG', era: '青銅城邦 ⚔️', level: 25, score: 1580 },
+  { name: 'EcoWalker', era: '農業文明 🌾', level: 19, score: 1180 },
+  { name: '散步達人', era: '農業文明 🌾', level: 15, score: 890 },
+  { name: 'Demo Player', era: '史前時代 🪨', level: 3, score: 45 },
+];
+
+/* ============================================================
+   COMPUTE & RENDER
+   ============================================================ */
+function getCurrentEra() {
+  const s = state.civScore;
+  if (s >= 900) return 3;
+  if (s >= 500) return 2;
+  if (s >= 200) return 1;
+  return 0;
+}
+
+function getEraThreshold(era) {
+  return [200, 500, 900, 1200][era];
+}
+
+function getEraStart(era) {
+  return [0, 200, 500, 900][era];
+}
+
+function renderAll(justUnlocked = []) {
+  renderTopBar();
+  renderDashboard();
+  renderEras(justUnlocked);
+  renderMascot();
+  renderLeague();
+  renderGlobal();
+}
+
+function renderTopBar() {
+  const era = ERAS[getCurrentEra()];
+  document.getElementById('era-badge-top').textContent = era.emoji + ' ' + era.name;
+  document.getElementById('streak-badge').textContent = '🔥 連續 ' + state.streak + ' 天';
+}
+
+function renderDashboard() {
+  const steps = state.steps;
+  const goal = state.suggestedSteps;
+  const pct = Math.min(100, Math.round(steps / goal * 100));
+  const civScore = state.civScore;
+  const era = getCurrentEra();
+  const eraStart = getEraStart(era);
+  const eraEnd = era < 3 ? getEraThreshold(era) : eraStart + 300;
+  const civPct = Math.min(100, Math.round((civScore - eraStart) / (eraEnd - eraStart) * 100));
+
+  document.getElementById('steps-display').textContent = steps.toLocaleString();
+  document.getElementById('goal-display').textContent = goal.toLocaleString();
+  document.getElementById('steps-bar').style.width = pct + '%';
+  document.getElementById('steps-pct').textContent = pct + '%';
+  document.getElementById('civ-score-display').textContent = civScore;
+  document.getElementById('civ-bar').style.width = civPct + '%';
+  document.getElementById('civ-pct').textContent = civPct + '%';
+  document.getElementById('era-badge-civ').textContent = ERAS[era].emoji + ' ' + ERAS[era].name;
+
+  // Next era text
+  if (era < 3) {
+    document.querySelector('#civ-card .text-sm span:first-child').textContent = '下一時代門檻：' + getEraThreshold(era);
+  } else {
+    document.querySelector('#civ-card .text-sm span:first-child').textContent = '已達最高文明時代';
+  }
+
+  // Status badge
+  const statusEl = document.getElementById('today-status');
+  if (state.civilizationBurstActive) {
+    statusEl.className = 'status-badge status-burst';
+    statusEl.textContent = '🌟 文明爆發';
+  } else if (pct >= 100) {
+    statusEl.className = 'status-badge status-done';
+    statusEl.textContent = '✓ 已達標';
+  } else if (pct >= 70) {
+    statusEl.className = 'status-badge status-mid';
+    statusEl.textContent = '⚡ 接近達標';
+  } else {
+    statusEl.className = 'status-badge status-low';
+    statusEl.textContent = '⚠ 尚未達標';
+  }
+
+  // Resources
+  document.getElementById('labor-display').textContent = state.labor;
+  document.getElementById('food-display').textContent = state.food;
+  document.getElementById('tech-display').textContent = state.tech;
+}
+
+function renderEras(justUnlocked = []) {
+  const container = document.getElementById('eras-grid');
+  const currentEraIdx = getCurrentEra();
+  container.innerHTML = '';
+
+  ERAS.forEach((era, eraIdx) => {
+    const isActive = eraIdx === currentEraIdx;
+    const isCompleted = eraIdx < currentEraIdx;
+    const isLocked = eraIdx > currentEraIdx;
+
+    let cardClass = 'era-card';
+    if (isActive) cardClass += ' active';
+    if (isCompleted) cardClass += ' completed';
+    if (isLocked) cardClass += ' locked';
+
+    let statusTag = '';
+    if (isActive) statusTag = '<span class="era-status-tag tag-active">▶ 當前時代</span>';
+    else if (isCompleted) statusTag = '<span class="era-status-tag tag-done">✓ 已完成</span>';
+    else statusTag = '<span class="era-status-tag tag-locked">🔒 未解鎖</span>';
+
+    const buildingsHTML = era.buildings.map(b => {
+      const unlocked = state.unlockedBuildings.has(b.id);
+      const isBuilding = !unlocked && state.civScore >= b.threshold - 40 && !isLocked;
+      const justUnlockedThis = justUnlocked.includes(b.id);
+      let slotClass = 'building-slot';
+      let badge = '';
+      let extra = '';
+      if (unlocked) {
+        slotClass += ' unlocked';
+        if (justUnlockedThis) slotClass += ' just-unlocked';
+        badge = '<span class="building-badge">✓</span>';
+      } else if (isBuilding) {
+        slotClass += ' building';
+        const prog = Math.round(Math.max(0, (state.civScore - (b.threshold - 40)) / 40 * 100));
+        extra = `<div class="building-mini-prog"><div class="building-mini-fill" style="width:${prog}%"></div></div>`;
+      } else {
+        slotClass += ' locked-slot';
+        extra = '<div class="building-lock-icon">🔒</div>';
+      }
+      return `<div class="${slotClass}">
+        ${badge}
+        <div class="building-emoji">${b.emoji}</div>
+        <div class="building-name">${b.name}</div>
+        ${extra}
+      </div>`;
+    }).join('');
+
+    container.innerHTML += `
+      <div class="${cardClass}">
+        <div class="era-header">
+          <span class="era-emoji">${era.emoji}</span>
+          <div>
+            <div class="era-name">${era.name}</div>
+            <div class="era-range">${era.range} 文明值</div>
+          </div>
+          ${statusTag}
+        </div>
+        <div class="buildings-grid">${buildingsHTML}</div>
+      </div>`;
+  });
+}
+
+function renderMascot() {
+  const pct = state.steps / state.suggestedSteps;
+  const hasDiet = state.hasDietAnalysis;
+  const burst = state.civilizationBurstActive;
+  let text = '', mood = '';
+
+  if (burst) {
+    text = '🎉 飲食和步數都達標了，今天的文明正在爆發成長！科技值大幅提升，新建築正在解鎖中！';
+    mood = '🌟 文明爆發中！';
+    document.getElementById('mascot-char').textContent = '🧙';
+  } else if (pct >= 1) {
+    text = '太棒了！今日目標達成✨ 聚落的人歡呼雀躍，文明又往前一大步！';
+    mood = '😄 非常高興';
+  } else if (pct >= 0.7) {
+    text = '很好！再加把勁，你再走幾步，' + (hasDiet ? '加上今天的飲食記錄，文明爆發就要來了！' : '記得記錄飲食，能觸發文明爆發！');
+    mood = '😊 期待中';
+  } else if (!hasDiet && pct < 0.3) {
+    text = '今天還沒走幾步…糧食也還沒記錄，文明可能要停滯了。快動起來吧！🪨';
+    mood = '😟 非常擔心';
+  } else if (!hasDiet) {
+    text = '步數有在增加，但糧食記錄還沒完成。飲食分析能提升文明效率哦！🌾';
+    mood = '🤔 有點擔心';
+  } else if (pct < 0.3) {
+    text = '昨天才剛點燃火堆，今天真的要讓文明原地踏步嗎？聚落的人在等你！';
+    mood = '😟 擔心中';
+  } else {
+    text = '飲食記錄完成了，步數也在累積中。快衝到目標，解鎖新建築！🏛️';
+    mood = '😊 期待中';
+  }
+
+  document.getElementById('mascot-text').textContent = text;
+  document.getElementById('mascot-mood').textContent = mood;
+}
+
+function renderLeague() {
+  // Update Demo Player in league
+  const leaguePlayers = LEAGUE_PLAYERS.map(p => ({ ...p }));
+  const me = leaguePlayers.find(p => p.isMe);
+  me.steps = state.steps;
+  me.civScore = state.civScore;
+
+  // Re-sort
+  leaguePlayers.sort((a, b) => b.civScore - a.civScore);
+  leaguePlayers.forEach((p, i) => p.rank = i + 1);
+
+  const meRank = leaguePlayers.find(p => p.isMe).rank;
+  state.leagueRank = meRank;
+
+  const tbody = document.getElementById('league-tbody');
+  tbody.innerHTML = '';
+
+  leaguePlayers.forEach((p, i) => {
+    const rankClass = i === 0 ? 'rank-1' : i === 1 ? 'rank-2' : i === 2 ? 'rank-3' : '';
+    const isMe = p.isMe;
+    const rowClass = isMe ? 'lb-me-row' : '';
+    const statusTag = p.status === 'promo'
+      ? '<span class="lb-league-tag tag-promo">↑ 晉升區</span>'
+      : p.status === 'stable'
+        ? '<span class="lb-league-tag tag-stable">– 穩定區</span>'
+        : '<span class="lb-league-tag tag-drop">↓ 降級區</span>';
+
+    tbody.innerHTML += `<tr class="${rowClass}">
+      <td><span class="lb-rank ${rankClass}">${p.rank <= 3 ? ['🥇','🥈','🥉'][p.rank-1] : '#'+p.rank}</span></td>
+      <td class="lb-player ${isMe ? 'is-me' : ''}">${p.name}${isMe ? ' 👤' : ''}</td>
+      <td>${p.steps.toLocaleString()} 步</td>
+      <td>${p.civScore} 分</td>
+      <td>${statusTag}</td>
+    </tr>`;
+  });
+}
+
+function renderGlobal() {
+  const tbody = document.getElementById('global-tbody');
+  tbody.innerHTML = '';
+  GLOBAL_PLAYERS.forEach((p, i) => {
+    const rankClass = i === 0 ? 'rank-1' : i === 1 ? 'rank-2' : i === 2 ? 'rank-3' : '';
+    const isMe = p.name === 'Demo Player';
+    tbody.innerHTML += `<tr class="${isMe ? 'lb-me-row' : ''}">
+      <td><span class="lb-rank ${rankClass}">${i < 3 ? ['🥇','🥈','🥉'][i] : '#'+(i+1)}</span></td>
+      <td class="lb-player ${isMe ? 'is-me' : ''}">${p.name}${isMe ? ' 👤' : ''}</td>
+      <td>${p.era}</td>
+      <td>Lv. ${p.level}</td>
+      <td>${p.score.toLocaleString()}</td>
+    </tr>`;
+  });
+}
+
+/* ============================================================
+   RESOURCE ANIMATION
+   ============================================================ */
+function flashResource(id, val) {
+  const el = document.getElementById(id);
+  el.textContent = '+' + val + ' ↑';
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2000);
+}
+
+/* ============================================================
+   BUILDING UNLOCK LOGIC
+   ============================================================ */
+function checkBuildingUnlocks() {
+  const newlyUnlocked = [];
+  ERAS.forEach(era => {
+    era.buildings.forEach(b => {
+      if (!state.unlockedBuildings.has(b.id) && state.civScore >= b.threshold) {
+        state.unlockedBuildings.add(b.id);
+        newlyUnlocked.push(b.id);
+      }
+    });
+  });
+  return newlyUnlocked;
+}
+
+/* ============================================================
+   ACTION HANDLERS
+   ============================================================ */
+function addSteps(n) {
+  state.steps += n;
+  const laborGain = Math.round(n / 100);
+  state.labor += laborGain;
+  const civGain = state.hasDietAnalysis
+    ? Math.round(n / 60)
+    : Math.round(n / 100);
+  state.civScore += civGain;
+  flashResource('labor-change', laborGain);
+  const unlocked = checkBuildingUnlocks();
+  renderAll(unlocked);
+  if (unlocked.length > 0) showToast('🏛️ 新建築解鎖！' + unlocked.map(id => {
+    for (const e of ERAS) for (const b of e.buildings) if (b.id === id) return b.name;
+  }).join('、'));
+}
+
+function completeGoal() {
+  state.steps = Math.max(state.steps, state.suggestedSteps);
+  state.streak += 1;
+  const techGain = 15;
+  state.tech += techGain;
+  state.civScore += 35;
+  flashResource('tech-change', techGain);
+
+  if (state.hasDietAnalysis) {
+    state.civilizationBurstActive = true;
+    state.tech += 20;
+    state.civScore += 50;
+    flashResource('tech-change', 20);
+    showToast('🌟 文明爆發！飲食與步行雙達標，科技值大幅加成！');
+    document.getElementById('civ-card').classList.add('glow-burst');
+    document.getElementById('resources-card').classList.add('glow-burst');
+    setTimeout(() => {
+      document.getElementById('civ-card').classList.remove('glow-burst');
+      document.getElementById('resources-card').classList.remove('glow-burst');
+    }, 4000);
+  } else {
+    showToast('🎯 今日步數達標！連續 ' + state.streak + ' 天，文明繼續前進！');
+  }
+  const unlocked = checkBuildingUnlocks();
+  renderAll(unlocked);
+}
+
+function resetDemo() {
+  state = deepClone(INITIAL_STATE);
+  state.civilizationBurstActive = false;
+  document.getElementById('diet-result').style.display = 'none';
+  document.getElementById('diet-done-badge').style.display = 'none';
+  document.getElementById('diet-input').value = '';
+  document.getElementById('diet-img-preview').innerHTML = '';
+  renderAll();
+  showToast('🔄 Demo 已重置');
+}
+
+/* ============================================================
+   DIET ANALYSIS
+   ============================================================ */
+const UNHEALTHY_KEYWORDS = ['薯條','可樂','炸','奶茶','漢堡','炸雞','鹹酥雞','披薩','炸物','冰淇淋'];
+const HEALTHY_KEYWORDS = ['雞胸','豆漿','蔬菜','香蕉','雞蛋','蛋','沙拉','豆腐','燕麥','優格','水果'];
+
+function analyzeDiet() {
+  const input = document.getElementById('diet-input').value.trim();
+  if (!input || input.length < 2) {
+    showToast('⚠ 請先輸入今日飲食內容');
+    return;
+  }
+
+  const unhealthyCount = UNHEALTHY_KEYWORDS.filter(k => input.includes(k)).length;
+  const healthyCount = HEALTHY_KEYWORDS.filter(k => input.includes(k)).length;
+  const isUnhealthy = unhealthyCount > healthyCount;
+  const isBalanced = healthyCount >= 2 && unhealthyCount === 0;
+
+  let kcal, protein, carb, fat, balance, suggested, confidence, summary;
+
+  if (isUnhealthy) {
+    kcal = 850 + Math.round(Math.random() * 300);
+    protein = 22 + Math.round(Math.random() * 10);
+    carb = 110 + Math.round(Math.random() * 30);
+    fat = 38 + Math.round(Math.random() * 15);
+    balance = '⚠ 偏高熱量';
+    suggested = unhealthyCount >= 2 ? 9500 : 8500;
+    confidence = 82 + Math.round(Math.random() * 10);
+    summary = '偵測到高熱量飲食，建議增加活動量';
+  } else if (isBalanced) {
+    kcal = 520 + Math.round(Math.random() * 150);
+    protein = 38 + Math.round(Math.random() * 15);
+    carb = 62 + Math.round(Math.random() * 20);
+    fat = 14 + Math.round(Math.random() * 8);
+    balance = '✅ 均衡';
+    suggested = 6500 + Math.round(Math.random() * 500);
+    confidence = 88 + Math.round(Math.random() * 8);
+    summary = '飲食均衡，文明穩定度提升';
+  } else {
+    kcal = 650 + Math.round(Math.random() * 200);
+    protein = 28 + Math.round(Math.random() * 12);
+    carb = 80 + Math.round(Math.random() * 25);
+    fat = 22 + Math.round(Math.random() * 10);
+    balance = '🔸 尚可';
+    suggested = 7000 + Math.round(Math.random() * 500);
+    confidence = 78 + Math.round(Math.random() * 10);
+    summary = '飲食尚可，建議增加蔬菜攝取';
+  }
+
+  const foodGain = isBalanced ? 18 : isUnhealthy ? 8 : 12;
+  const stabilityGain = isBalanced ? 15 : isUnhealthy ? 5 : 9;
+  const techGain = isBalanced ? 10 : 0;
+
+  state.hasDietAnalysis = true;
+  state.food += foodGain;
+  state.tech += techGain;
+  state.suggestedSteps = suggested;
+  flashResource('food-change', foodGain);
+  if (techGain) flashResource('tech-change', techGain);
+
+  // Render result
+  document.getElementById('d-kcal').textContent = kcal;
+  document.getElementById('d-protein').textContent = protein;
+  document.getElementById('d-carb').textContent = carb;
+  document.getElementById('d-fat').textContent = fat;
+  document.getElementById('d-balance').textContent = balance;
+  document.getElementById('d-confidence').textContent = confidence + '%';
+  document.getElementById('d-conf-bar').style.width = confidence + '%';
+  document.getElementById('d-suggested').textContent = suggested.toLocaleString() + ' 步';
+  document.getElementById('diet-summary-text').textContent = summary;
+
+  const effectsEl = document.getElementById('d-civ-effects');
+  effectsEl.innerHTML = `
+    <span class="civ-effect-chip">🌾 糧食 +${foodGain}</span>
+    <span class="civ-effect-chip">🛡️ 穩定度 +${stabilityGain}</span>
+    ${techGain ? '<span class="civ-effect-chip tech">⚡ 科技值 +' + techGain + '（均衡飲食加成）</span>' : ''}
+    <span class="civ-effect-chip">📍 建議步數更新至 ${suggested.toLocaleString()}</span>`;
+
+  document.getElementById('diet-result').style.display = 'block';
+  document.getElementById('diet-done-badge').style.display = 'flex';
+  renderAll();
+  showToast('🤖 AI 飲食分析完成！' + (isBalanced ? '均衡飲食，文明效率提升！' : summary));
+}
+
+function dietImgPreview(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    document.getElementById('diet-img-preview').innerHTML =
+      `<img class="preview-img" src="${ev.target.result}" alt="飲食照片"> <span class="text-sm" style="margin-left:8px">📷 圖片預覽（AI 分析以文字輸入為準）</span>`;
+  };
+  reader.readAsDataURL(file);
+}
+
+/* ============================================================
+   TOAST
+   ============================================================ */
+let toastTimer = null;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 3200);
+}
+
+/* ============================================================
+   DEMO MODE
+   ============================================================ */
+const DEMO_STEPS = [
+  {
+    label: '步驟 1 / 6',
+    text: '🪨 現在是早上…Demo Player 今天只有 1,200 步。\n奇比非常擔心：「聚落的人正在等資源，文明要停滯了！」',
+    action: () => {
+      // Already at 1200 steps from reset
+      renderAll();
+    }
+  },
+  {
+    label: '步驟 2 / 6',
+    text: '🤖 Demo Player 決定記錄今日飲食：雞腿便當、無糖豆漿、香蕉\nAI 正在分析…',
+    action: () => {
+      document.getElementById('diet-input').value = '雞腿便當、無糖豆漿、香蕉';
+      setTimeout(() => {
+        analyzeDiet();
+      }, 600);
+    }
+  },
+  {
+    label: '步驟 3 / 6',
+    text: '📊 系統更新！\n• 建議步數調整為 7,000 步\n• 糧食 +18，穩定度 +15\n• 科技值 +10（均衡飲食加成）\n飲食分析後，步數轉換文明效率提高！',
+    action: () => {
+      renderAll();
+      document.getElementById('diet-result').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  },
+  {
+    label: '步驟 4 / 6',
+    text: '🏃 Demo Player 出發健走！\n步數從 1,200 → 7,200 步，逐步累積中…\n（這裡模擬一天的健走過程）',
+    action: () => {
+      let added = 0;
+      const interval = setInterval(() => {
+        if (added >= 6) { clearInterval(interval); return; }
+        addSteps(1000); added++;
+      }, 320);
+    }
+  },
+  {
+    label: '步驟 5 / 6',
+    text: '🌟 文明爆發觸發！\n飲食分析 + 步數達標 → 雙重加成！\n• 科技值大幅提升\n• 新建築解鎖\n• 文明進度條爆發前進！',
+    action: () => {
+      setTimeout(() => completeGoal(), 400);
+    }
+  },
+  {
+    label: '步驟 6 / 6 — 完成',
+    text: '🏆 排行榜更新！\nDemo Player 的文明分數大幅提升，在週聯賽中排名上升！\n這就是 CiviGo 的核心價值：讓每天的健走與飲食，都成為文明建設的動力。',
+    action: () => {
+      renderLeague();
+      document.getElementById('league-table').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      showToast('🏆 Demo 展示完成！歡迎探索更多功能');
+    }
+  },
+];
+
+let demoStep = -1;
+let demoActive = false;
+
+function demoLaunch() {
+  resetDemo();
+  demoStep = -1;
+  demoActive = true;
+  document.getElementById('demo-overlay').classList.add('active');
+  document.getElementById('demo-launch-btn').classList.add('running');
+  document.getElementById('demo-launch-btn').textContent = '🎬 演示中…';
+  demoNext();
+}
+
+function demoNext() {
+  demoStep++;
+  if (demoStep >= DEMO_STEPS.length) { demoEnd(); return; }
+  const step = DEMO_STEPS[demoStep];
+  document.getElementById('demo-step-text').textContent = step.text;
+  document.getElementById('demo-step-counter').textContent = step.label;
+  document.getElementById('demo-progress-bar').style.width = ((demoStep + 1) / DEMO_STEPS.length * 100) + '%';
+  const nextBtn = document.getElementById('demo-next-btn');
+  nextBtn.textContent = demoStep === DEMO_STEPS.length - 1 ? '✓ 完成演示' : '▶ 下一步';
+  step.action();
+
+  // Auto-scroll to top for first step
+  if (demoStep === 0) window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function demoEnd() {
+  demoActive = false;
+  document.getElementById('demo-overlay').classList.remove('active');
+  document.getElementById('demo-launch-btn').classList.remove('running');
+  document.getElementById('demo-launch-btn').textContent = '🎬 Demo 展示模式';
+  demoStep = -1;
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+renderAll();
+</script>
+</body>
+</html>
