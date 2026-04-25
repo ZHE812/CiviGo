@@ -1,17 +1,4 @@
-
 <!DOCTYPE html>
-<!--
-  CiviGo Advanced MVP Demo - Single HTML Prototype
-  功能包含：
-  - 步數模擬
-  - AI 飲食分析模擬
-  - 文明進化（史前→農業→青銅→工業）
-  - 建築解鎖（含視覺回饋）
-  - 吉祥物提醒系統
-  - 週聯賽與全球排行榜
-  - 商業模式展示
-  - Demo 展示模式（自動流程演示）
--->
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
@@ -312,13 +299,15 @@
     border-radius: var(--radius-sm); padding: 14px; margin-bottom: 14px;
     display: flex; gap: 10px; flex-wrap: wrap;
   }
-  .diet-input-area input[type=text] {
+  .diet-input-area input[type=text],
+  .diet-input-area input[type=password] {
     flex: 1; min-width: 160px; background: var(--bg);
     border: 1px solid var(--border2); border-radius: var(--radius-sm);
     color: var(--text); padding: 10px 14px; font-size: 14px;
     outline: none; transition: border-color 0.2s;
   }
-  .diet-input-area input[type=text]:focus { border-color: var(--blue); }
+  .diet-input-area input[type=text]:focus,
+  .diet-input-area input[type=password]:focus { border-color: var(--blue); }
   .diet-input-area input[type=file] { display: none; }
   .file-label {
     padding: 10px 14px; background: var(--bg); border: 1px dashed var(--border2);
@@ -332,6 +321,7 @@
     cursor: pointer; white-space: nowrap; transition: opacity 0.2s;
   }
   .analyze-btn:hover { opacity: 0.88; }
+  .analyze-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
   #diet-result {
     display: none; background: var(--bg3); border: 1px solid rgba(88,166,255,0.3);
@@ -445,10 +435,8 @@
 </head>
 <body>
 
-<!-- TOAST -->
 <div id="toast">🌟 文明爆發！飲食與步行雙達標，科技值加成！</div>
 
-<!-- DEMO OVERLAY -->
 <div id="demo-overlay">
   <div id="demo-panel">
     <h3>🎬 Demo 展示模式</h3>
@@ -464,7 +452,6 @@
 
 <div class="app-wrap">
 
-  <!-- ===== A. TOP BAR ===== -->
   <div class="topbar">
     <div class="logo">
       <div class="logo-icon">🏛️</div>
@@ -481,11 +468,9 @@
     </div>
   </div>
 
-  <!-- ===== B. DASHBOARD ===== -->
   <div class="section-title">📊 今日儀表板 — Dashboard</div>
   <div class="dashboard-grid">
 
-    <!-- Steps card -->
     <div class="card" id="steps-card">
       <div class="stat-label">今日步數</div>
       <div class="flex-between" style="align-items:flex-end">
@@ -504,7 +489,6 @@
       </div>
     </div>
 
-    <!-- Civ card -->
     <div class="card" id="civ-card">
       <div class="stat-label">文明等級 — Civilization Score</div>
       <div class="flex-between" style="align-items:flex-end">
@@ -524,7 +508,6 @@
     </div>
   </div>
 
-  <!-- Resources -->
   <div class="card mt8" id="resources-card">
     <div class="text-sm" style="margin-bottom:10px">🌐 文明資源</div>
     <div class="resources-row">
@@ -549,7 +532,6 @@
     </div>
   </div>
 
-  <!-- ===== C. ACTION BUTTONS ===== -->
   <div class="mt20">
     <div class="section-title">🕹️ 互動操作</div>
     <div class="action-grid">
@@ -560,7 +542,6 @@
     </div>
   </div>
 
-  <!-- ===== G. MASCOT ===== -->
   <div class="mt20">
     <div class="section-title">🦊 文明守護者 — CiviBot</div>
     <div class="mascot-section">
@@ -575,36 +556,43 @@
     </div>
   </div>
 
-  <!-- ===== D. CIVILIZATION MAP ===== -->
   <div class="mt28">
     <div class="section-title">🏛️ 文明時代與建築解鎖</div>
     <div class="eras-grid" id="eras-grid">
-      <!-- Rendered by JS -->
-    </div>
+      </div>
   </div>
 
-  <!-- ===== E. AI DIET SECTION ===== -->
   <div class="mt28">
-    <div class="section-title">🤖 AI 飲食分析</div>
+    <div class="section-title">🤖 AI 飲食分析 (Gemini Vision 整合)</div>
     <div class="card">
       <div class="flex-between" style="flex-wrap:wrap; gap:8px; margin-bottom:12px">
         <div>
           <div style="font-weight:700; font-size:15px">記錄今日飲食</div>
-          <div class="text-sm">輸入食物內容，AI 即時分析文明影響</div>
+          <div class="text-sm">輸入食物內容或上傳圖片，AI 即時分析文明影響</div>
         </div>
         <div id="diet-done-badge" style="display:none" class="status-badge status-done">✓ 分析完成</div>
       </div>
+      
       <div class="diet-input-area">
-        <input type="text" id="diet-input" placeholder="例：雞腿便當、無糖豆漿、香蕉" />
+        <input type="password" id="gemini-api-key" placeholder="輸入 Gemini API Key (必須填寫才能進行分析)" />
+      </div>
+      <div class="diet-input-area">
+        <input type="text" id="diet-input" placeholder="可輸入文字輔助說明 (例：無糖豆漿)" />
         <label class="file-label" for="diet-img">📷 上傳圖片</label>
         <input type="file" id="diet-img" accept="image/*" onchange="dietImgPreview(event)">
-        <button class="analyze-btn" onclick="analyzeDiet()">🔍 AI 分析飲食</button>
+        <button class="analyze-btn" id="analyze-btn" onclick="analyzeDiet()">🔍 執行 AI 分析</button>
       </div>
+
       <div id="diet-img-preview" style="margin-bottom:10px"></div>
+      
       <div id="diet-result">
-        <div style="font-size:13px; color:var(--text2); margin-bottom:8px">
-          📋 分析結果 — <span id="diet-summary-text"></span>
+        <div class="flex-between" style="margin-bottom:12px; align-items: flex-start;">
+          <div style="font-size:13px; color:var(--text2);">
+            📋 分析結果 — <span id="diet-summary-text"></span>
+          </div>
+          <div id="d-category" class="user-chip" style="color:var(--gold); border-color:var(--gold); font-weight:700; white-space: nowrap; margin-left: 10px;"></div>
         </div>
+        
         <div class="diet-result-grid">
           <div class="diet-stat">
             <div class="diet-stat-label">估計熱量</div>
@@ -638,7 +626,6 @@
     </div>
   </div>
 
-  <!-- ===== H. WEEKLY LEAGUE ===== -->
   <div class="mt28">
     <div class="section-title">🏆 本週聯賽排行榜</div>
     <div class="card">
@@ -660,7 +647,6 @@
     </div>
   </div>
 
-  <!-- ===== I. GLOBAL RANKING ===== -->
   <div class="mt28">
     <div class="section-title">🌍 全球文明排行榜 Top 10</div>
     <div class="card">
@@ -675,7 +661,6 @@
     </div>
   </div>
 
-  <!-- ===== J. BUSINESS MODEL ===== -->
   <div class="mt28">
     <div class="section-title">💡 Why CiviGo — 創業構想</div>
     <div class="biz-grid">
@@ -718,9 +703,7 @@
     </div>
   </div>
 
-</div><!-- /app-wrap -->
-
-<script>
+</div><script>
 /* ============================================================
    CIVIGO STATE MANAGEMENT
    ============================================================ */
@@ -740,6 +723,8 @@ const INITIAL_STATE = {
 };
 
 let state = deepClone(INITIAL_STATE);
+let currentUploadedImageBase64 = null;
+let currentUploadedImageMime = null;
 
 function deepClone(s) {
   return {
@@ -866,14 +851,12 @@ function renderDashboard() {
   document.getElementById('civ-pct').textContent = civPct + '%';
   document.getElementById('era-badge-civ').textContent = ERAS[era].emoji + ' ' + ERAS[era].name;
 
-  // Next era text
   if (era < 3) {
     document.querySelector('#civ-card .text-sm span:first-child').textContent = '下一時代門檻：' + getEraThreshold(era);
   } else {
     document.querySelector('#civ-card .text-sm span:first-child').textContent = '已達最高文明時代';
   }
 
-  // Status badge
   const statusEl = document.getElementById('today-status');
   if (state.civilizationBurstActive) {
     statusEl.className = 'status-badge status-burst';
@@ -889,7 +872,6 @@ function renderDashboard() {
     statusEl.textContent = '⚠ 尚未達標';
   }
 
-  // Resources
   document.getElementById('labor-display').textContent = state.labor;
   document.getElementById('food-display').textContent = state.food;
   document.getElementById('tech-display').textContent = state.tech;
@@ -992,13 +974,11 @@ function renderMascot() {
 }
 
 function renderLeague() {
-  // Update Demo Player in league
   const leaguePlayers = LEAGUE_PLAYERS.map(p => ({ ...p }));
   const me = leaguePlayers.find(p => p.isMe);
   me.steps = state.steps;
   me.civScore = state.civScore;
 
-  // Re-sort
   leaguePlayers.sort((a, b) => b.civScore - a.civScore);
   leaguePlayers.forEach((p, i) => p.rank = i + 1);
 
@@ -1119,62 +1099,114 @@ function completeGoal() {
 function resetDemo() {
   state = deepClone(INITIAL_STATE);
   state.civilizationBurstActive = false;
+  currentUploadedImageBase64 = null;
+  currentUploadedImageMime = null;
   document.getElementById('diet-result').style.display = 'none';
   document.getElementById('diet-done-badge').style.display = 'none';
   document.getElementById('diet-input').value = '';
+  document.getElementById('gemini-api-key').value = '';
   document.getElementById('diet-img-preview').innerHTML = '';
+  document.getElementById('analyze-btn').disabled = false;
+  document.getElementById('analyze-btn').textContent = '🔍 執行 AI 分析';
   renderAll();
   showToast('🔄 Demo 已重置');
 }
 
 /* ============================================================
-   DIET ANALYSIS
+   REAL DIET ANALYSIS (100% API DRIVEN)
    ============================================================ */
-const UNHEALTHY_KEYWORDS = ['薯條','可樂','炸','奶茶','漢堡','炸雞','鹹酥雞','披薩','炸物','冰淇淋'];
-const HEALTHY_KEYWORDS = ['雞胸','豆漿','蔬菜','香蕉','雞蛋','蛋','沙拉','豆腐','燕麥','優格','水果'];
-
-function analyzeDiet() {
+async function analyzeDiet() {
   const input = document.getElementById('diet-input').value.trim();
-  if (!input || input.length < 2) {
-    showToast('⚠ 請先輸入今日飲食內容');
+  const apiKey = document.getElementById('gemini-api-key').value.trim();
+  const btn = document.getElementById('analyze-btn');
+
+  // 強制要求輸入金鑰
+  if (!apiKey) {
+    showToast('⚠ 請先輸入 Gemini API Key 才能進行分析');
     return;
   }
 
-  const unhealthyCount = UNHEALTHY_KEYWORDS.filter(k => input.includes(k)).length;
-  const healthyCount = HEALTHY_KEYWORDS.filter(k => input.includes(k)).length;
-  const isUnhealthy = unhealthyCount > healthyCount;
-  const isBalanced = healthyCount >= 2 && unhealthyCount === 0;
-
-  let kcal, protein, carb, fat, balance, suggested, confidence, summary;
-
-  if (isUnhealthy) {
-    kcal = 850 + Math.round(Math.random() * 300);
-    protein = 22 + Math.round(Math.random() * 10);
-    carb = 110 + Math.round(Math.random() * 30);
-    fat = 38 + Math.round(Math.random() * 15);
-    balance = '⚠ 偏高熱量';
-    suggested = unhealthyCount >= 2 ? 9500 : 8500;
-    confidence = 82 + Math.round(Math.random() * 10);
-    summary = '偵測到高熱量飲食，建議增加活動量';
-  } else if (isBalanced) {
-    kcal = 520 + Math.round(Math.random() * 150);
-    protein = 38 + Math.round(Math.random() * 15);
-    carb = 62 + Math.round(Math.random() * 20);
-    fat = 14 + Math.round(Math.random() * 8);
-    balance = '✅ 均衡';
-    suggested = 6500 + Math.round(Math.random() * 500);
-    confidence = 88 + Math.round(Math.random() * 8);
-    summary = '飲食均衡，文明穩定度提升';
-  } else {
-    kcal = 650 + Math.round(Math.random() * 200);
-    protein = 28 + Math.round(Math.random() * 12);
-    carb = 80 + Math.round(Math.random() * 25);
-    fat = 22 + Math.round(Math.random() * 10);
-    balance = '🔸 尚可';
-    suggested = 7000 + Math.round(Math.random() * 500);
-    confidence = 78 + Math.round(Math.random() * 10);
-    summary = '飲食尚可，建議增加蔬菜攝取';
+  // 強制要求至少提供文字或圖片
+  if (!input && !currentUploadedImageBase64) {
+    showToast('⚠ 請輸入文字內容或上傳食物圖片');
+    return;
   }
+
+  btn.disabled = true;
+  btn.textContent = '⏳ AI 視覺分析中...';
+
+  try {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+    
+    // 動態組合傳送給 Gemini 的請求內容
+    const parts = [];
+    const prompt = `請分析這份飲食內容（包含圖片與/或文字描述）。估計其營養價值，並給予一個精準的「食物分類」。請務必只回傳一個有效的 JSON 物件，不要包含 Markdown 語法或任何其他文字。格式如下：
+    {
+      "category": "食物分類(例如：原型健康餐、速食炸物、家常便當、手搖飲料、精緻甜點等)",
+      "kcal": 數字,
+      "protein": 數字,
+      "carb": 數字,
+      "fat": 數字,
+      "isHealthy": 布林值,
+      "summary": "繁體中文簡短評價(約15字，評估對健康或文明體力的影響)"
+    }`;
+    
+    parts.push({ text: prompt });
+
+    if (input) {
+      parts.push({ text: `使用者補充文字說明: ${input}` });
+    }
+
+    if (currentUploadedImageBase64) {
+      const base64Data = currentUploadedImageBase64.split(',')[1];
+      parts.push({ inline_data: { mime_type: currentUploadedImageMime, data: base64Data } });
+    }
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: parts }]
+      })
+    });
+
+    if (!response.ok) {
+      const errData = await response.json();
+      throw new Error(errData.error?.message || 'API 呼叫失敗');
+    }
+    
+    const data = await response.json();
+    let responseText = data.candidates[0].content.parts[0].text;
+    
+    // 清理可能的 Markdown 格式，確保能正確解析 JSON
+    responseText = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+    const aiResult = JSON.parse(responseText);
+    
+    // 將結果傳遞給 UI 渲染
+    processDietResult(
+      aiResult.category, 
+      aiResult.kcal, 
+      aiResult.protein, 
+      aiResult.carb, 
+      aiResult.fat, 
+      !aiResult.isHealthy, 
+      aiResult.isHealthy, 
+      aiResult.summary, 
+      90 + Math.round(Math.random()*8) // 模擬信心指數
+    );
+    
+  } catch (err) {
+    console.error(err);
+    showToast('❌ API 解析失敗：' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🔍 執行 AI 分析';
+  }
+}
+
+function processDietResult(category, kcal, protein, carb, fat, isUnhealthy, isBalanced, summary, confidence) {
+  let balance = isBalanced ? '✅ 均衡' : isUnhealthy ? '⚠ 偏高熱量' : '🔸 尚可';
+  let suggested = isBalanced ? 6500 + Math.round(Math.random() * 500) : isUnhealthy ? 9500 : 7000 + Math.round(Math.random() * 500);
 
   const foodGain = isBalanced ? 18 : isUnhealthy ? 8 : 12;
   const stabilityGain = isBalanced ? 15 : isUnhealthy ? 5 : 9;
@@ -1188,6 +1220,7 @@ function analyzeDiet() {
   if (techGain) flashResource('tech-change', techGain);
 
   // Render result
+  document.getElementById('d-category').textContent = '🏷️ ' + (category || '未分類食物');
   document.getElementById('d-kcal').textContent = kcal;
   document.getElementById('d-protein').textContent = protein;
   document.getElementById('d-carb').textContent = carb;
@@ -1214,10 +1247,14 @@ function analyzeDiet() {
 function dietImgPreview(e) {
   const file = e.target.files[0];
   if (!file) return;
+  
+  currentUploadedImageMime = file.type;
   const reader = new FileReader();
+  
   reader.onload = ev => {
+    currentUploadedImageBase64 = ev.target.result;
     document.getElementById('diet-img-preview').innerHTML =
-      `<img class="preview-img" src="${ev.target.result}" alt="飲食照片"> <span class="text-sm" style="margin-left:8px">📷 圖片預覽（AI 分析以文字輸入為準）</span>`;
+      `<img class="preview-img" src="${currentUploadedImageBase64}" alt="飲食照片"> <span class="text-sm" style="margin-left:8px">📷 圖片已載入，請輸入金鑰後點擊分析</span>`;
   };
   reader.readAsDataURL(file);
 }
@@ -1241,18 +1278,16 @@ const DEMO_STEPS = [
   {
     label: '步驟 1 / 6',
     text: '🪨 現在是早上…Demo Player 今天只有 1,200 步。\n奇比非常擔心：「聚落的人正在等資源，文明要停滯了！」',
-    action: () => {
-      // Already at 1200 steps from reset
-      renderAll();
-    }
+    action: () => renderAll()
   },
   {
     label: '步驟 2 / 6',
-    text: '🤖 Demo Player 決定記錄今日飲食：雞腿便當、無糖豆漿、香蕉\nAI 正在分析…',
+    text: '🤖 Demo Player 決定記錄今日飲食：雞腿便當、無糖豆漿、香蕉\n（為維持流程順暢，此展示步驟直接載入成功分析的結果）',
     action: () => {
       document.getElementById('diet-input').value = '雞腿便當、無糖豆漿、香蕉';
+      // 為了 Demo 模式可以脫離 API 金鑰順暢展示，此處直接塞入一組理想狀態的展示數據
       setTimeout(() => {
-        analyzeDiet();
+        processDietResult('原型健康餐', 650, 35, 70, 20, false, true, '高蛋白低GI，能有效提升文明生產力', 95);
       }, 600);
     }
   },
@@ -1278,9 +1313,7 @@ const DEMO_STEPS = [
   {
     label: '步驟 5 / 6',
     text: '🌟 文明爆發觸發！\n飲食分析 + 步數達標 → 雙重加成！\n• 科技值大幅提升\n• 新建築解鎖\n• 文明進度條爆發前進！',
-    action: () => {
-      setTimeout(() => completeGoal(), 400);
-    }
+    action: () => setTimeout(() => completeGoal(), 400)
   },
   {
     label: '步驟 6 / 6 — 完成',
@@ -1317,7 +1350,6 @@ function demoNext() {
   nextBtn.textContent = demoStep === DEMO_STEPS.length - 1 ? '✓ 完成演示' : '▶ 下一步';
   step.action();
 
-  // Auto-scroll to top for first step
   if (demoStep === 0) window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
